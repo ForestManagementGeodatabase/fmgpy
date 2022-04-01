@@ -6,3 +6,10 @@ Really interesting Python package.
 
 * list item 1 
 * List item 2
+
+## Funding
+
+## Latest Updates
+
+## Authors
+
