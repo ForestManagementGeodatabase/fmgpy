@@ -76,7 +76,7 @@ In this section you'll activate the conda environment
 # Activate the base environment
 conda activate
 
-# Your command prompt should now look somathing like:
+# Your command prompt should now look something like:
 (base) c:\<path to working directory>\fmgpy>
 ```
 
