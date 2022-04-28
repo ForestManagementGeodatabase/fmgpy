@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "fmgpy"
+version = "0.1.0"
+description = "A Python package for the Forest Management Geodatabase. "
+authors = ["MVR GIS"]
+license = "CC0 v1.0 Universal"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

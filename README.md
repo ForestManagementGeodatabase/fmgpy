@@ -1,12 +1,25 @@
 # fmgpy
-This Python package stores the code for the FMG Toolbox.
 
-## Description
-Really interesting Python package. 
+A Python package for the Forest Management Geodatabase. 
 
-* list item 1 
-* List item 2
+## Installation
 
+```bash
+$ pip install fmgpy
+```
 
-## Authorship
-Barrie Chileen did all of these 
+## Usage
+
+- TODO
+
+## Contributing
+
+Interested in contributing? Check out the contributing guidelines. Please note that this project is released with a Code of Conduct. By contributing to this project, you agree to abide by its terms.
+
+## License
+
+`fmgpy` was created by MVR GIS. It is licensed under the terms of the CC0 v1.0 Universal license.
+
+## Credits
+
+`fmgpy` was created with [`cookiecutter`](https://cookiecutter.readthedocs.io/en/latest/) and the `py-pkgs-cookiecutter` [template](https://github.com/py-pkgs/py-pkgs-cookiecutter).
