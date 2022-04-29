@@ -68,6 +68,19 @@ conda update --all
 conda install cookiecutter
 ```
 
+## Install the `poetry` Application
+The current version of the `poetry` application must be manually installed 
+using the 
+[official installer](https://python-poetry.org/docs/master/#installing-with-the-official-installer)
+
+Windows Powershell:
+```shell
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | .\python -
+```
+
+Add the path to the `poetry.exe` file to your user environment `PATH` variable: 
+`C:\Users\B5PMMMPD\AppData\Roaming\Python\Scripts\poetry.exe` 
+
 ## Activate the Conda Environment
 In this section you'll activate the conda environment 
 [see the docs for details](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#activating-an-environment). 
@@ -77,7 +90,7 @@ In this section you'll activate the conda environment
 conda activate
 
 # Your command prompt should now look something like:
-(base) c:\<path to working directory>\fmgpy>
+(base) c:\path to current working directory>
 ```
 
 
