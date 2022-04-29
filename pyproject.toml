@@ -1,16 +1,18 @@
 [tool.poetry]
 name = "fmgpy"
 version = "0.1.0"
-description = "A Python package for the Forest Management Geodatabase. "
+description = "A Python package for the Forest Management Geodatabase."
 authors = ["MVR GIS"]
 license = "CC0 v1.0 Universal"
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7"
+arcpy-metadata = ">=0.5.3"
 arcpy = ">=2.9"
 
 [tool.poetry.dev-dependencies]
+pytest = ">=7.1.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

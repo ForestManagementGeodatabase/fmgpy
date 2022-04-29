@@ -1,19 +1,24 @@
 import arcpy
+import arcpy.da
 import sys
 
-def check_Plot_IDs(FC_Master, Master_PlotID_Field, FC_Check, Check_PlotID_Field):
+def check_Plot_IDs(FC_Master, Master_PlotID_Field, FC_Check,
+                   Check_PlotID_Field):
     # NEED TO CHECK MASTER FC TO ENSURE PLOT ID FIELD IS OF TYPE SHORT INTEGER
-    """Checks plot id's on a given input FMG field dataset (Fixed, Prism, Age) based on a list
-    of plot IDs generated from a master set of plot IDs, this master set of plot IDs can be the
-    target shapefile of plot locations used in TerraSync, the target Plot feature class used in
-    TerraFlex/Collector or the Fixed plot locations, assuming that the fixed plots have correct
+    """Checks plot id's on a given input FMG field dataset (Fixed, Prism, Age)
+    based on a list of plot IDs generated from a master set of plot IDs, this
+    master set of plot IDs can be the target shapefile of plot locations used
+    in TerraSync, the target Plot feature class used in TerraFlex/Collector or
+    the Fixed plot locations, assuming that the fixed plots have correct
     Plot IDs. The function returns the string path to the checked dataset.
 
     Keyword Arguments:
-    FC_Master           --  The path to the feature class or table that contains the full list
-                            of plot IDs, against which the field data will be checked.
+    FC_Master           --  The path to the feature class or table that
+                            contains the full list of plot IDs, against which
+                            the field data will be checked.
     Master_PlotID_Field --  The field name containing Plot IDs
-    FC_Check            --  The path to the feature class or table that contains the field
+    FC_Check            --  The path to the feature class or table that
+                            contains the field
                             data requiring plot ID checks
     Check_PlotID_Field  --  The field name containing Plot IDs
     """
