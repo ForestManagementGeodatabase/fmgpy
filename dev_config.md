@@ -58,7 +58,7 @@ conda install cookiecutter
 Install from a specific conda channel:
 ```shell
 # Install from a specific channel
-conda install arcpy -channel esri
+conda install -channel esri arcpy
 ```
 
 ## Install the `poetry` Application
