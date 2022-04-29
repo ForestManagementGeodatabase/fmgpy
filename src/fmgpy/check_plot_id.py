@@ -2,10 +2,11 @@ import arcpy
 import arcpy.da
 import sys
 
-def check_Plot_IDs(FC_Master, Master_PlotID_Field, FC_Check,
-                   Check_PlotID_Field):
+
+def check_plot_id(fc_master, master_plot_id_field, fc_check,
+                  check_plot_id_field):
     # NEED TO CHECK MASTER FC TO ENSURE PLOT ID FIELD IS OF TYPE SHORT INTEGER
-    """Checks plot id's on a given input FMG field dataset (Fixed, Prism, Age)
+    """Checks plot IDs on a given input FMG field dataset (Fixed, Prism, Age)
     based on a list of plot IDs generated from a master set of plot IDs, this
     master set of plot IDs can be the target shapefile of plot locations used
     in TerraSync, the target Plot feature class used in TerraFlex/Collector or
@@ -24,33 +25,33 @@ def check_Plot_IDs(FC_Master, Master_PlotID_Field, FC_Check,
     """
 
     # Check Plot ID Fields to ensure they are integer
-    MasterDescribe = arcpy.Describe(FC_Master)
-    for M_Field in MasterDescribe.fields:
-        if M_Field.name == Master_PlotID_Field:
+    master_describe = arcpy.Describe(fc_master)
+    for M_Field in master_describe.fields:
+        if M_Field.name == master_plot_id_field:
             if M_Field.type not in ('SmallInteger', 'Integer'):
                 arcpy.AddError('Master Plot ID field type must be short or long integer, quitting.')
                 sys.exit(0)
 
-    CheckDescribe = arcpy.Describe(FC_Check)
-    for C_Field in CheckDescribe.fields:
-        if C_Field.name == Check_PlotID_Field:
+    check_describe = arcpy.Describe(fc_check)
+    for C_Field in check_describe.fields:
+        if C_Field.name == check_plot_id_field:
             if C_Field.type not in ('SmallInteger', 'Integer'):
                 arcpy.AddError('Check Plot ID field type must be short or long integer, quitting.')
                 sys.exit(0)
 
     # Create a set of all valid PLOT IDs
-    Plot_IDs = set([row[0] for row in arcpy.da.SearchCursor(FC_Master, Master_PlotID_Field)])
+    Plot_IDs = set([row[0] for row in arcpy.da.SearchCursor(fc_master, master_plot_id_field)])
 
     # Add a field to the Feature Class being Checked
-    FlagField = arcpy.AddField_management(in_table=FC_Check,
-                                          field_name="VALID_PLOT_ID",
-                                          field_type='TEXT',
-                                          field_length=3)
-    arcpy.AddMessage('VALID_PLOT_ID field added to '.format(FC_Check))
+    flag_field = arcpy.AddField_management(in_table=fc_check,
+                                           field_name="VALID_PLOT_ID",
+                                           field_type='TEXT',
+                                           field_length=3)
+    arcpy.AddMessage('VALID_PLOT_ID field added to '.format(fc_check))
 
     # Run through the Feature Class being Checked, using new field to flag rows with Plot IDs that
     # do not match the list initially created
-    with arcpy.da.UpdateCursor(FC_Check, [Check_PlotID_Field, "VALID_PLOT_ID"]) as cursor:
+    with arcpy.da.UpdateCursor(fc_check, [check_plot_id_field, "VALID_PLOT_ID"]) as cursor:
         for row in cursor:
             if row[0] in Plot_IDs:
                 row[1] = 'Yes'
@@ -61,4 +62,4 @@ def check_Plot_IDs(FC_Master, Master_PlotID_Field, FC_Check,
 
     arcpy.AddMessage('VALID_PLOT_ID populated, check complete')
 
-    return FC_Check
+    return fc_check

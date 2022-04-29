@@ -10,7 +10,7 @@ $ pip install fmgpy
 
 ## Usage
 
-- TODO
+- TODO: add usage
 
 ## Contributing
 
