@@ -19,8 +19,7 @@ def check_plot_id(fc_master, master_plot_id_field, fc_check,
                             the field data will be checked.
     Master_PlotID_Field --  The field name containing Plot IDs
     FC_Check            --  The path to the feature class or table that
-                            contains the field
-                            data requiring plot ID checks
+                            contains the field data requiring plot ID checks
     Check_PlotID_Field  --  The field name containing Plot IDs
     """
 
@@ -40,7 +39,7 @@ def check_plot_id(fc_master, master_plot_id_field, fc_check,
                 sys.exit(0)
 
     # Create a set of all valid PLOT IDs
-    Plot_IDs = set([row[0] for row in arcpy.da.SearchCursor(fc_master, master_plot_id_field)])
+    plot_IDs = set([row[0] for row in arcpy.da.SearchCursor(fc_master, master_plot_id_field)])
 
     # Add a field to the Feature Class being Checked
     flag_field = arcpy.AddField_management(in_table=fc_check,
@@ -53,9 +52,9 @@ def check_plot_id(fc_master, master_plot_id_field, fc_check,
     # do not match the list initially created
     with arcpy.da.UpdateCursor(fc_check, [check_plot_id_field, "VALID_PLOT_ID"]) as cursor:
         for row in cursor:
-            if row[0] in Plot_IDs:
+            if row[0] in plot_IDs:
                 row[1] = 'Yes'
-            elif row[0] not in Plot_IDs:
+            elif row[0] not in plot_IDs:
                 row[1] = 'No'
             cursor.updateRow(row)
         del row, cursor
