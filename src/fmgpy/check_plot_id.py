@@ -1,64 +1,67 @@
+# -*- coding: UTF-8 -*-
+# FMG QA Tools Function Library
+
 import arcpy
-import arcpy.da
+import os
 import sys
+import numpy as np
+import pandas as pd
+
+from arcgis.features import GeoAccessor, GeoSeriesAccessor
 
 
-def check_plot_id(fc_master, master_plot_id_field, fc_check,
-                  check_plot_id_field):
-    # NEED TO CHECK MASTER FC TO ENSURE PLOT ID FIELD IS OF TYPE SHORT INTEGER
-    """Checks plot IDs on a given input FMG field dataset (Fixed, Prism, Age)
-    based on a list of plot IDs generated from a master set of plot IDs, this
-    master set of plot IDs can be the target shapefile of plot locations used
-    in TerraSync, the target Plot feature class used in TerraFlex/Collector or
-    the Fixed plot locations, assuming that the fixed plots have correct
+def check_plot_ids(fc_center, center_plot_id_field, fc_check, check_plot_id_field):
+    """Checks plot IDs on a given input FMG field dataset (Fixed, Prism, Age) based on a list
+    of plot IDs generated from a master set of plot IDs, this master set of plot IDs can be the
+    target shapefile of plot locations used in TerraSync, the target Plot feature class used in
+    TerraFlex/Collector or the Fixed plot locations, assuming that the fixed plots have correct
     Plot IDs. The function returns the string path to the checked dataset.
 
     Keyword Arguments:
-    FC_Master           --  The path to the feature class or table that
-                            contains the full list of plot IDs, against which
-                            the field data will be checked.
-    Master_PlotID_Field --  The field name containing Plot IDs
-    FC_Check            --  The path to the feature class or table that
-                            contains the field data requiring plot ID checks
-    Check_PlotID_Field  --  The field name containing Plot IDs
+    fc_center               --  The path to the feature class or table that contains the full list
+                                of plot IDs, against which the field data will be checked.
+    center_plot_id_field    --  The field name containing Plot IDs
+    fc_check                --  The path to the feature class or table that contains the field
+                                data requiring plot ID checks
+    check_plot_id_field     --  The field name containing Plot IDs
     """
 
-    # Check Plot ID Fields to ensure they are integer
-    master_describe = arcpy.Describe(fc_master)
-    for M_Field in master_describe.fields:
-        if M_Field.name == master_plot_id_field:
-            if M_Field.type not in ('SmallInteger', 'Integer'):
-                arcpy.AddError('Master Plot ID field type must be short or long integer, quitting.')
-                sys.exit(0)
+    arcpy.AddMessage(
+        "Checking Plot ID fields for {0}".format(fc_center)
+    )
 
-    check_describe = arcpy.Describe(fc_check)
-    for C_Field in check_describe.fields:
-        if C_Field.name == check_plot_id_field:
-            if C_Field.type not in ('SmallInteger', 'Integer'):
-                arcpy.AddError('Check Plot ID field type must be short or long integer, quitting.')
-                sys.exit(0)
+    # create dataframes
+    main_df = pd.DataFrame.spatial.from_featureclass(fc_center)
+    check_df = pd.DataFrame.spatial.from_featureclass(fc_check)
 
-    # Create a set of all valid PLOT IDs
-    plot_IDs = set([row[0] for row in arcpy.da.SearchCursor(fc_master, master_plot_id_field)])
+    # check main plot ID field to ensure it is integer
+    if main_df[center_plot_id_field].dtype == 'int64':
+        arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(fc_center)
+                                                                    ))
+    else:
+        arcpy.AddError(
+            "{0} plot ID field type must be short or long integer, quitting.".format(os.path.basename(fc_center)
+                                                                                     ))
+        sys.exit(0)
 
-    # Add a field to the Feature Class being Checked
-    flag_field = arcpy.AddField_management(in_table=fc_check,
-                                           field_name="VALID_PLOT_ID",
-                                           field_type='TEXT',
-                                           field_length=3)
-    arcpy.AddMessage('VALID_PLOT_ID field added to '.format(fc_check))
+    # check input plot ID field to ensure it is integer
+    if check_df[check_plot_id_field].dtype == 'int64':
+        arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(fc_check)
+                                                                    ))
+    else:
+        arcpy.AddError(
+            "(0}) plot ID field type must be short or long integer, quitting.".format(os.path.basename(fc_check))
+        )
+        sys.exit(0)
 
-    # Run through the Feature Class being Checked, using new field to flag rows with Plot IDs that
-    # do not match the list initially created
-    with arcpy.da.UpdateCursor(fc_check, [check_plot_id_field, "VALID_PLOT_ID"]) as cursor:
-        for row in cursor:
-            if row[0] in plot_IDs:
-                row[1] = 'Yes'
-            elif row[0] not in plot_IDs:
-                row[1] = 'No'
-            cursor.updateRow(row)
-        del row, cursor
+    # flag plot IDs not in main fc (returns boolean)
+    check_df["valid_plot_id"] = check_df[check_plot_id_field].isin(main_df[center_plot_id_field])
 
-    arcpy.AddMessage('VALID_PLOT_ID populated, check complete')
+    # convert boolean value to text Yes/No
+    check_df["valid_plot_id"].apply(lambda x: np.where(x, 'Yes', 'No'))
 
+    arcpy.AddMessage("VALID_PLOT_ID populated, check of {0} complete".format(os.path.basename(fc_check)))
+
+    # overwrite input FC
+    check_df.spatial.to_featureclass(fc_check)
     return fc_check

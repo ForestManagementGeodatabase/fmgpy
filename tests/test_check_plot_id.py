@@ -17,13 +17,9 @@ fixed_df = pd.DataFrame.spatial.from_featureclass(fixed_path)
 prism_path = os.path.join(test_folder_path, "Prism")
 prism_df = pd.DataFrame.spatial.from_featureclass(prism_path)
 
-plot_path = os.path.join(test_folder_path, "Plot")
-plot_df = pd.DataFrame.spatial.from_featureclass(plot_path)
+center_path = os.path.join(test_folder_path, "Center")
+center_df = pd.DataFrame.spatial.from_featureclass(center_path)
 
-# saving out to feature class, output must be same type as original input
-# i.e. if input is a shapefile, output can't be a gdb feature class
 
-age_path_2 = os.path.join(test_folder_path, "Age_2")
-age_df.spatial.to_featureclass(age_path_2)
-
-Check_PlotID_Field = "PLOT"
+def test_plot_id(df):
+    assert "valid_plot_id" in list(df)

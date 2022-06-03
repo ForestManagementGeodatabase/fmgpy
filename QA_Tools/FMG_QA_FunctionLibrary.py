@@ -11,7 +11,7 @@ from arcgis.features import GeoAccessor, GeoSeriesAccessor
 arcpy.env.overwriteOutput = True
 
 
-def check_Plot_IDs(FC_Main, Main_PlotID_Field, FC_Check, Check_PlotID_Field):
+def check_Plot_IDs(FC_Center, Center_PlotID_Field, FC_Check, Check_PlotID_Field):
     """Checks plot IDs on a given input FMG field dataset (Fixed, Prism, Age) based on a list
     of plot IDs generated from a master set of plot IDs, this master set of plot IDs can be the
     target shapefile of plot locations used in TerraSync, the target Plot feature class used in
@@ -19,43 +19,29 @@ def check_Plot_IDs(FC_Main, Main_PlotID_Field, FC_Check, Check_PlotID_Field):
     Plot IDs. The function returns the string path to the checked dataset.
 
     Keyword Arguments:
-    FC_Main           --  The path to the feature class or table that contains the full list
-                            of plot IDs, against which the field data will be checked.
-    Main_PlotID_Field --  The field name containing Plot IDs
-    FC_Check            --  The path to the feature class or table that contains the field
-                            data requiring plot ID checks
-    Check_PlotID_Field  --  The field name containing Plot IDs
+    fc_center               --  The path to the feature class or table that contains the full list
+                                of plot IDs, against which the field data will be checked.
+    center_plot_id_field    --  The field name containing Plot IDs
+    fc_check                --  The path to the feature class or table that contains the field
+                                data requiring plot ID checks
+    check_plot_id_field     --  The field name containing Plot IDs
     """
 
     arcpy.AddMessage(
-        "Checking Plot ID fields for {0}".format(FC_Main)
+        "Checking Plot ID fields for {0}".format(FC_Center)
     )
 
     # create dataframes
-    main_df = pd.DataFrame.spatial.from_featureclass(FC_Main)
+    center_df = pd.DataFrame.spatial.from_featureclass(FC_Center)
     check_df = pd.DataFrame.spatial.from_featureclass(FC_Check)
 
-    # main_list = list(main_df)
-    # check_list = list(check_df)
-    #
-    # print("{0}".format(os.path.basename(FC_Main)))
-    # print(main_list)
-    #
-    # print("{0}".format(os.path.basename(FC_Check)))
-    # print(check_list)
-
-    # print(FC_Main)
-    # print(Main_PlotID_Field)
-    # print(FC_Check)
-    # print(Check_PlotID_Field)
-
     # check main plot ID field to ensure it is integer
-    if main_df[Main_PlotID_Field].dtype == 'int64':
-        arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(FC_Main)
+    if center_df[Center_PlotID_Field].dtype == 'int64':
+        arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(FC_Center)
                                                                     ))
     else:
         arcpy.AddError(
-            "{0} plot ID field type must be short or long integer, quitting.".format(os.path.basename(FC_Main)
+            "{0} plot ID field type must be short or long integer, quitting.".format(os.path.basename(FC_Center)
                                                                                      ))
         sys.exit(0)
 
@@ -70,7 +56,7 @@ def check_Plot_IDs(FC_Main, Main_PlotID_Field, FC_Check, Check_PlotID_Field):
         sys.exit(0)
 
     # flag plot IDs not in main fc (returns boolean)
-    check_df["valid_plot_id"] = check_df[Check_PlotID_Field].isin(main_df[Main_PlotID_Field])
+    check_df["valid_plot_id"] = check_df[Check_PlotID_Field].isin(center_df[Center_PlotID_Field])
 
     # convert boolean value to text Yes/No
     check_df["valid_plot_id"].apply(lambda x: np.where(x, 'Yes', 'No'))
@@ -191,14 +177,14 @@ def check_Contractor_Age_Plots(FC_Plots, Plots_PlotID, Age_FlagField, FC_Age, Ag
     age_df = pd.DataFrame.spatial.from_featureclass(FC_Age)
 
     # Create sets of Plots ID for collected age plots
-    Required_Age_PlotIDs = plots_df[Plots_PlotID].tolist()
-    # TODO: Where is required_age_plotIDs used? This function looks unfinished
+
     Required_Age_PlotIDs = set(
         [row[0] for row in arcpy.da.SearchCursor(
             FC_Plots, Plots_PlotID, "{0} = 'A'".format(Age_FlagField)
         )]
     )
 
+    # where age_FlagField = A in inPlot
     plots_df["HAS_AGE"] = plots_df[Plots_PlotID].isin(age_df[Age_PlotID])
     arcpy.AddMessage("Plot points checked for corresponding age record")
 
