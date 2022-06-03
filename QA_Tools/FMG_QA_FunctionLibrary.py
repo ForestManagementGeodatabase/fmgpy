@@ -2,71 +2,89 @@
 # FMG QA Tools Function Library
 
 import arcpy
-import os, sys, math
+import os, sys
+import numpy as np
+import pandas as pd
+
+from arcgis.features import GeoAccessor, GeoSeriesAccessor
+
+arcpy.env.overwriteOutput = True
 
 
-
-def check_Plot_IDs(FC_Master, Master_PlotID_Field, FC_Check, Check_PlotID_Field):
-    # NEED TO CHECK MASTER FC TO ENSURE PLOT ID FIELD IS OF TYPE SHORT INTEGER
-    """Checks plot id's on a given input FMG field dataset (Fixed, Prism, Age) based on a list
+def check_Plot_IDs(FC_Main, Main_PlotID_Field, FC_Check, Check_PlotID_Field):
+    """Checks plot IDs on a given input FMG field dataset (Fixed, Prism, Age) based on a list
     of plot IDs generated from a master set of plot IDs, this master set of plot IDs can be the
     target shapefile of plot locations used in TerraSync, the target Plot feature class used in
     TerraFlex/Collector or the Fixed plot locations, assuming that the fixed plots have correct
     Plot IDs. The function returns the string path to the checked dataset.
 
     Keyword Arguments:
-    FC_Master           --  The path to the feature class or table that contains the full list
+    FC_Main           --  The path to the feature class or table that contains the full list
                             of plot IDs, against which the field data will be checked.
-    Master_PlotID_Field --  The field name containing Plot IDs
-    FC_Check            --  The path to the feature classs or table that contains the field
+    Main_PlotID_Field --  The field name containing Plot IDs
+    FC_Check            --  The path to the feature class or table that contains the field
                             data requiring plot ID checks
     Check_PlotID_Field  --  The field name containing Plot IDs
     """
 
-    # Check Plot ID Fields to ensure they are integer
-    MasterDescribe = arcpy.Describe(FC_Master)
-    for M_Field in MasterDescribe.fields:
-        if M_Field.name == Master_PlotID_Field:
-            if M_Field.type not in ('SmallInteger', 'Integer'):
-                arcpy.AddError('Master Plot ID field type must be short or long integer, quitting.')
-                sys.exit(0)
-                
-    CheckDescribe = arcpy.Describe(FC_Check)
-    for C_Field in CheckDescribe.fields:
-        if C_Field.name == Check_PlotID_Field:
-            if C_Field.type not in ('SmallInteger', 'Integer'):
-                arcpy.AddError('Check Plot ID field type must be short or long integer, quitting.')
-                sys.exit(0)
-                
-    # Create a set of all valid PLOT IDs
-    Plot_IDs = set([row[0] for row in arcpy.da.SearchCursor(FC_Master, Master_PlotID_Field)])
+    arcpy.AddMessage(
+        "Checking Plot ID fields for {0}".format(FC_Main)
+    )
 
-    # Add a field to the Feature Class being Checked
-    FlagField = arcpy.AddField_management(in_table = FC_Check,
-                              field_name = "VALID_PLOT_ID",
-                              field_type = 'TEXT',
-                              field_length = 3)
-    arcpy.AddMessage('VALID_PLOT_ID field added to '.format(FC_Check))
+    # create dataframes
+    main_df = pd.DataFrame.spatial.from_featureclass(FC_Main)
+    check_df = pd.DataFrame.spatial.from_featureclass(FC_Check)
 
-    # Run through the Feature Class being Checked, using new field to flag rows with Plot IDs that
-    # do not match the list initially created
-    with arcpy.da.UpdateCursor(FC_Check, [Check_PlotID_Field, "VALID_PLOT_ID"]) as cursor:
-        for row in cursor:
-            if row[0] in Plot_IDs:
-                row[1] = 'Yes'
-            elif row[0] not in Plot_IDs:
-                row[1] = 'No'
-            cursor.updateRow(row)
-        del row, cursor
-        
-    arcpy.AddMessage('VALID_PLOT_ID populated, check complete')
+    # main_list = list(main_df)
+    # check_list = list(check_df)
+    #
+    # print("{0}".format(os.path.basename(FC_Main)))
+    # print(main_list)
+    #
+    # print("{0}".format(os.path.basename(FC_Check)))
+    # print(check_list)
 
+    # print(FC_Main)
+    # print(Main_PlotID_Field)
+    # print(FC_Check)
+    # print(Check_PlotID_Field)
+
+    # check main plot ID field to ensure it is integer
+    if main_df[Main_PlotID_Field].dtype == 'int64':
+        arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(FC_Main)
+                                                                    ))
+    else:
+        arcpy.AddError(
+            "{0} plot ID field type must be short or long integer, quitting.".format(os.path.basename(FC_Main)
+                                                                                     ))
+        sys.exit(0)
+
+    # check input plot ID field to ensure it is integer
+    if check_df[Check_PlotID_Field].dtype == 'int64':
+        arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(FC_Check)
+                                                                    ))
+    else:
+        arcpy.AddError(
+            "(0}) plot ID field type must be short or long integer, quitting.".format(os.path.basename(FC_Check))
+        )
+        sys.exit(0)
+
+    # flag plot IDs not in main fc (returns boolean)
+    check_df["valid_plot_id"] = check_df[Check_PlotID_Field].isin(main_df[Main_PlotID_Field])
+
+    # convert boolean value to text Yes/No
+    check_df["valid_plot_id"].apply(lambda x: np.where(x, 'Yes', 'No'))
+
+    arcpy.AddMessage("VALID_PLOT_ID populated, check of {0} complete".format(os.path.basename(FC_Check)))
+
+    # overwrite input FC
+    check_df.spatial.to_featureclass(FC_Check)
     return FC_Check
 
 
 def check_Fixed_Offset(FC_PlotLocations, PlotID_Field, FC_Fixed, Fixed_PlotID_Field):
     """Checks the location of fixed plots against the initial set of target plots by creating
-    a new field on the fixed plot dataset and populating it with the distsnce it is from the
+    a new field on the fixed plot dataset and populating it with the distance it is from the
     target plot location. This distance should be in meters, which means both input feature
     classes must have a coordinate system in meters.
 
@@ -76,44 +94,44 @@ def check_Fixed_Offset(FC_PlotLocations, PlotID_Field, FC_Fixed, Fixed_PlotID_Fi
     FC_Fixed            --  The path to the feature class containing fixed plot locations
     Fixed_PlotID_Field  --  The field name containing Plot IDs of the fixed plot locations
     """
+    arcpy.AddMessage(
+        "Calculating horizontal offset between fixed plots and plot centers"
+    )
 
-    # Add field to Fixed plots to hold the offset distance in meters
-    arcpy.AddField_management(in_table = FC_Fixed,
-                              field_name = "DIST_FROM_TARGET_M",
-                              field_type = "DOUBLE")
-    arcpy.AddMessage('Field DIST_FROM_TARGET_M added to {0}'.format(FC_Fixed))
+    # create dataframes
+    plot_df = pd.DataFrame.spatial.from_featureclass(FC_PlotLocations)
+    fixed_df = pd.DataFrame.spatial.from_featureclass(FC_Fixed)
 
-    # Define an empty list to hold master plot locations
-    Master_Plot_Locations = []
+    # calculate horizontal offset between fixed points and main plot center
+    # join plot center SHAPE field to fixed on plot ID
+    fixed_coords = fixed_df.join(plot_df[[PlotID_Field, 'SHAPE']].set_index(PlotID_Field),
+                                 on=Fixed_PlotID_Field,
+                                 lsuffix='_fixed',
+                                 rsuffix='_plot')
 
-    # Create a list of tuples from the Plot Locations tuple format will be (Plot ID, X, Y)
-    with arcpy.da.SearchCursor (FC_PlotLocations, (PlotID_Field, 'SHAPE@X', 'SHAPE@Y')) as cursor:
-        for row in cursor:
-            Master_Plot_Locations.append(row)
-        del row, cursor
+    fixed_coords['FIXED_X'] = fixed_coords['SHAPE_fixed'].apply(lambda x: x.get('x'))
+    fixed_coords['FIXED_Y'] = fixed_coords['SHAPE_fixed'].apply(lambda x: x.get('y'))
+    fixed_coords['PLOT_X'] = fixed_coords['SHAPE_plot'].apply(lambda x: x.get('x'))
+    fixed_coords['PLOT_Y'] = fixed_coords['SHAPE_plot'].apply(lambda x: x.get('y'))
 
-    # Create an update cursor on the Fixed plot locations
-    arcpy.AddMessage('Calculating horizontal offset between Fixed plots and plot centers')
-    with arcpy.da.UpdateCursor (FC_Fixed, (Fixed_PlotID_Field, 'SHAPE@X', 'SHAPE@Y', 'DIST_FROM_TARGET_M')) as cursor:
-        for row in cursor:
-            for MPL in Master_Plot_Locations:
-                if row[0] == MPL[0]:
-                    # Calculate the fixed plot offset from the target plot location
-                    dX = float(MPL[1]) - float(row[1])
-                    dY = float(MPL[2]) - float(row[2])
-                    dXY = math.sqrt((float(dX)**2) + (float(dY)**2))
-                    row[3] = float(dXY)
-                cursor.updateRow(row)
-        del row, cursor
-    arcpy.AddMessage('Offsets calculated')
+    # calc difference in x
+    dx = fixed_coords['PLOT_X'] - fixed_coords['FIXED_X']
+    # calc difference in y
+    dy = fixed_coords['PLOT_Y'] - fixed_coords['FIXED_Y']
+    # calc offset [sq rt (dx^2 + dy^2)] and write to new column
+    fixed_coords["DIST_FROM_TARGET_M"] = np.sqrt((dx ** 2) + (dy ** 2))
+    fixed_df["DIST_FROM_TARGET_M"] = np.sqrt((dx ** 2) + (dy ** 2))
 
+    arcpy.AddMessage("Offsets calculated")
+
+    # overwrite input FC
+    fixed_df.spatial.to_featureclass(FC_Fixed)
     return FC_Fixed
 
 
-                    
-def check_Prism_Fixed (FC_Prism, Prism_PlotID, FC_Fixed, Fixed_PlotID):
+def check_Prism_Fixed(FC_Prism, Prism_PlotID, FC_Fixed, Fixed_PlotID):
     """ Checks to make sure there is a prism plot for every fixed plot and that there is a
-    prism plot for each fixed plot. This is accomplished by comparing unique sets of plot
+    fixed plot for each prism plot. This is accomplished by comparing unique sets of plot
     IDs present for each feature class and populating fields indicating if this relationship
     holds true
 
@@ -124,47 +142,35 @@ def check_Prism_Fixed (FC_Prism, Prism_PlotID, FC_Fixed, Fixed_PlotID):
     Fixed_PlotID  -- Fixed feature class plot ID field
     """
 
-    # Create sets of unique prism plot IDs and unique fixed plot IDs
-    PrismPlotIDs = set([row[0] for row in arcpy.da.SearchCursor(FC_Prism, Prism_PlotID)])
-    FixedPlotIDs = set([row[0] for row in arcpy.da.SearchCursor(FC_Fixed, Fixed_PlotID)])
+    arcpy.AddMessage(
+        "Checking for existence of corresponding prism and fixed plots"
+    )
 
-    # Add fields to fixed and prism feature classes
-    arcpy.AddField_management(in_table = FC_Prism,
-                              field_name = "HAS_FIXED",
-                              field_type = "TEXT",
-                              field_length = 5)
-    arcpy.AddMessage('HAS_FIXED field added to {0}'.format(FC_Prism))
-    
-    arcpy.AddField_management(in_table = FC_Fixed,
-                              field_name = "HAS_PRISM",
-                              field_type = "TEXT",
-                              field_length = 5)
-    arcpy.AddMessage('HAS_PRISM field added to {0}'.format(FC_Fixed))
+    # create dataframes
+    prism_df = pd.DataFrame.spatial.from_featureclass(FC_Prism)
+    fixed_df = pd.DataFrame.spatial.from_featureclass(FC_Fixed)
 
-    # Populate HAS_FIXED field, yes if there is a corresponding Fixed Plot, no if there isn't
-    with arcpy.da.UpdateCursor(FC_Prism, [Prism_PlotID, "HAS_FIXED"]) as cursor:
-        for row in cursor:
-            if row[0] in FixedPlotIDs:
-                row[1] = 'Yes'
-            elif row[0] not in FixedPlotIDs:
-                row[1] = 'No'
-            cursor.updateRow(row)
-        del row, cursor
-    arcpy.AddMessage('Prism points {0} checked for corresponding fixed points'.format(FC_Prism))
+    # flag prism plot IDs without corresponding fixed plot
+    prism_df["has_fixed"] = prism_df[Prism_PlotID].isin(fixed_df[Fixed_PlotID])
+    arcpy.AddMessage(
+        "Prism points {0} checked for corresponding fixed points".format(FC_Prism)
+    )
+    # convert boolean value to text Yes/No
+    prism_df["has_fixed"].apply(lambda x: np.where(x, 'Yes', 'No'))
 
-    # Populate HAS_PRISM field, yes if there is a corresponding prism plot and no if there isn't
-    with arcpy.da.UpdateCursor(FC_Fixed, [Fixed_PlotID, "HAS_PRISM"]) as cursor:
-        for row in cursor:
-            if row[0] in PrismPlotIDs:
-                row[1] = 'Yes'
-            elif row[0] not in PrismPlotIDs:
-                row[1] = 'No'
-            cursor.updateRow(row)
-        del row, cursor
-    arcpy.AddMessage('Fixed points {0} checked for corresponding prism points'.format(FC_Fixed))
-        
+    # flag fixed plot IDs without corresponding prism plot
+    fixed_df["has_prism"] = fixed_df[Fixed_PlotID].isin(prism_df[Prism_PlotID])
+    arcpy.AddMessage(
+        "Fixed points {0} checked for corresponding prism points".format(FC_Fixed)
+    )
+    # convert boolean value to text Yes/No
+    fixed_df["has_prism"].apply(lambda x: np.where(x, 'Yes', 'No'))
+
+    # overwrite input FC
+    prism_df.spatial.to_featureclass(FC_Prism)
+    fixed_df.spatial.to_featureclass(FC_Fixed)
     return [FC_Prism, FC_Fixed]
-    
+
 
 def check_Contractor_Age_Plots(FC_Plots, Plots_PlotID, Age_FlagField, FC_Age, Age_PlotID):
     """Checks prescribed age plots against collected age plots. Returns the prescribed age
@@ -178,160 +184,195 @@ def check_Contractor_Age_Plots(FC_Plots, Plots_PlotID, Age_FlagField, FC_Age, Ag
     Age_PlotID     --  Field name of Plot ID column for contractor submitted age plot feature class
     """
 
-    # Create sets of Plots ID for collected age plots
-    Required_Age_PlotIDs = set([row[0] for row in arcpy.da.SearchCursor(FC_Plots, Plots_PlotID, "{0} = 'A'".format(Age_FlagField))])
-    Existing_Age_PlotIDs = set([row[0] for row in arcpy.da.SearchCursor(FC_Age, Age_PlotID)])
-    
-
     # Check to ensure Age plots exit where required, adding and populating a flag field on the Plot feature class
-    arcpy.AddField_management(in_table = FC_Plots,
-                              field_name = "HAS_AGE",
-                              field_type = "TEXT",
-                              field_length = 5)
-    arcpy.AddMessage('Field HAS_AGE added to {0}'.format(FC_Plots))
 
-    with arcpy.da.UpdateCursor(FC_Plots, [Plots_PlotID, "HAS_AGE"]) as cursor:
-        for row in cursor:
-            if row[0] in Existing_Age_PlotIDs:
-                row[1] = 'Yes'
-            elif row[0] not in Existing_Age_PlotIDs:
-                row[1] = 'No'
-            cursor.updateRow(row)
-        del row, cursor
-    arcpy.AddMessage('Plot points checked for corresponding age record')
+    # Create dataframes
+    plots_df = pd.DataFrame.spatial.from_featureclass(FC_Plots)
+    age_df = pd.DataFrame.spatial.from_featureclass(FC_Age)
 
+    # Create sets of Plots ID for collected age plots
+    Required_Age_PlotIDs = plots_df[Plots_PlotID].tolist()
+    # TODO: Where is required_age_plotIDs used? This function looks unfinished
+    Required_Age_PlotIDs = set(
+        [row[0] for row in arcpy.da.SearchCursor(
+            FC_Plots, Plots_PlotID, "{0} = 'A'".format(Age_FlagField)
+        )]
+    )
+
+    plots_df["HAS_AGE"] = plots_df[Plots_PlotID].isin(age_df[Age_PlotID])
+    arcpy.AddMessage("Plot points checked for corresponding age record")
+
+    # TODO: save out dataframes
+    # overwrite input FC
     return FC_Plots
 
 
 def check_Required_Fields_Prism(FC_Prism):
-
     arcpy.AddMessage("Begin check on Prism points")
 
     # List of required fields
-    RF_Prism = ['TR_SP', 'TR_DIA', 'TR_CL', 'TR_HLTH', 'TR_CREW', 'TR_DATE', 'HAS_MIS_FIELD', 'MIS_FIELD']
-    
+    RF_Prism = [
+        "TR_SP",
+        "TR_DIA",
+        "TR_CL",
+        "TR_HLTH",
+        "TR_CREW",
+        "TR_DATE",
+        "HAS_MIS_FIELD",
+        "MIS_FIELD",
+    ]
+
     # Add check fields to input feature classes
-    arcpy.AddField_management(in_table = FC_Prism,
-                              field_name = "HAS_MIS_FIELD",
-                              field_type = "TEXT",
-                              field_length = 5)
-    arcpy.AddField_management(in_table = FC_Prism,
-                              field_name = "MIS_FIELD",
-                              field_type = "TEXT",
-                              field_length = 80)
-    arcpy.AddMessage('    Fields added to {0}'.format(FC_Prism))
+    arcpy.AddField_management(
+        in_table=FC_Prism, field_name="HAS_MIS_FIELD", field_type="TEXT", field_length=5
+    )
+    arcpy.AddField_management(
+        in_table=FC_Prism, field_name="MIS_FIELD", field_type="TEXT", field_length=80
+    )
+    arcpy.AddMessage("    Fields added to {0}".format(FC_Prism))
 
     # Populate HAS_MIS_FIELD if null values exist in required fields where TR_SP = NONE
-    row_count = len(list(i for i in arcpy.da.SearchCursor(FC_Prism, RF_Prism, "TR_SP = 'NONE'")))
+    row_count = len(
+        list(i for i in arcpy.da.SearchCursor(FC_Prism, RF_Prism, "TR_SP = 'NONE'"))
+    )
     if row_count == 0:
-        arcpy.AddMessage('    No records found where TR_SP = NONE')
+        arcpy.AddMessage("    No records found where TR_SP = NONE")
     elif row_count != 0:
-        with arcpy.da.UpdateCursor(FC_Prism, RF_Prism, "TR_SP = 'NONE'")as cursor:
+        with arcpy.da.UpdateCursor(FC_Prism, RF_Prism, "TR_SP = 'NONE'") as cursor:
             for row in cursor:
                 if None in row[4:6]:
-                    row[6] = 'Yes'
+                    row[6] = "Yes"
                 elif None not in row[4:6]:
-                    row[6] = 'No'
+                    row[6] = "No"
                 cursor.updateRow(row)
             del row, cursor
-        arcpy.AddMessage('    HAS_MIS_FIELD populated for no tree records')
-    
+        arcpy.AddMessage("    HAS_MIS_FIELD populated for no tree records")
 
     # Populate HAS_MIS_FIELD if null values exist in required fields for all other records
-    row_count = len(list(i for i in arcpy.da.SearchCursor(FC_Prism, RF_Prism, "TR_SP <> 'NONE' OR TR_SP IS NULL")))
+    row_count = len(
+        list(
+            i
+            for i in arcpy.da.SearchCursor(
+                FC_Prism, RF_Prism, "TR_SP <> 'NONE' OR TR_SP IS NULL"
+            )
+        )
+    )
     if row_count == 0:
-        arcpy.AddMessage(    "No records contain tree species")
+        arcpy.AddMessage("No records contain tree species")
     elif row_count != 0:
-        with arcpy.da.UpdateCursor(FC_Prism, RF_Prism, "TR_SP <> 'NONE' OR TR_SP IS NULL")as cursor:
+        with arcpy.da.UpdateCursor(
+                FC_Prism, RF_Prism, "TR_SP <> 'NONE' OR TR_SP IS NULL"
+        ) as cursor:
             for row in cursor:
                 if None in row[0:6]:
-                    row[6] = 'Yes'
+                    row[6] = "Yes"
                 elif None not in row[0:6]:
-                    row[6] = 'No'
+                    row[6] = "No"
                 cursor.updateRow(row)
             del row, cursor
-        arcpy.AddMessage('    HAS_MIS_FIELD populated for treed records')   
+        arcpy.AddMessage("    HAS_MIS_FIELD populated for treed records")
 
     # Check to ensure rows exist with tree species type 'NONE' and missing fields, then populate MIS_FIELD with missing field names
-    arcpy.MakeQueryTable_management(in_table = FC_Prism,
-                                    out_table = 'Q_Table',
-                                    in_key_field_option = "NO_KEY_FIELD",
-                                    where_clause = "HAS_MIS_FIELD = 'Yes' AND TR_SP = 'NONE'") # Query validated
-    QueryRows = int(arcpy.GetCount_management('Q_Table').getOutput(0))
-    arcpy.Delete_management('Q_Table') 
+    arcpy.MakeQueryTable_management(
+        in_table=FC_Prism,
+        out_table="Q_Table",
+        in_key_field_option="NO_KEY_FIELD",
+        where_clause="HAS_MIS_FIELD = 'Yes' AND TR_SP = 'NONE'",
+    )  # Query validated
+    QueryRows = int(arcpy.GetCount_management("Q_Table").getOutput(0))
+    arcpy.Delete_management("Q_Table")
     if QueryRows != 0:
-        with arcpy.da.UpdateCursor(FC_Prism, RF_Prism, "HAS_MIS_FIELD = 'Yes' AND TR_SP = 'NONE'") as cursor:
+        with arcpy.da.UpdateCursor(
+                FC_Prism, RF_Prism, "HAS_MIS_FIELD = 'Yes' AND TR_SP = 'NONE'"
+        ) as cursor:
             for row in cursor:
                 MissingFields = []
                 if row[4] is None:
                     MissingFields.append(RF_Prism[4])
                 elif row[5] is None:
                     MissingFields.append(RF_Prism[5])
-                row[7] = (', '.join(map(str, MissingFields)))
+                row[7] = ", ".join(map(str, MissingFields))
                 cursor.updateRow(row)
                 MissingFields = []
             del row, cursor
-    arcpy.AddMessage('    MIS_FIELDS populated for no tree records')
+    arcpy.AddMessage("    MIS_FIELDS populated for no tree records")
 
     # Populate MIS_FIELDS with missing field names for all other cases
-    arcpy.MakeQueryTable_management(in_table = FC_Prism,
-                                    out_table = 'Q_Table',
-                                    in_key_field_option = "NO_KEY_FIELD",
-                                    where_clause = "HAS_MIS_FIELD = 'Yes' AND TR_SP <> 'NONE' OR TR_SP IS NULL")
-    QueryRows = int(arcpy.GetCount_management('Q_Table').getOutput(0))
-    arcpy.Delete_management('Q_Table')
+    arcpy.MakeQueryTable_management(
+        in_table=FC_Prism,
+        out_table="Q_Table",
+        in_key_field_option="NO_KEY_FIELD",
+        where_clause="HAS_MIS_FIELD = 'Yes' AND TR_SP <> 'NONE' OR TR_SP IS NULL",
+    )
+    QueryRows = int(arcpy.GetCount_management("Q_Table").getOutput(0))
+    arcpy.Delete_management("Q_Table")
     if QueryRows != 0:
-        with arcpy.da.UpdateCursor(FC_Prism, RF_Prism, "HAS_MIS_FIELD = 'Yes' AND TR_SP <> 'NONE' OR TR_SP IS NULL") as cursor:
+        with arcpy.da.UpdateCursor(
+                FC_Prism,
+                RF_Prism,
+                "HAS_MIS_FIELD = 'Yes' AND TR_SP <> 'NONE' OR TR_SP IS NULL",
+        ) as cursor:
             for row in cursor:
                 MissingFields = []
                 for i in range(0, len(row[2:])):
                     if row[i] is None:
                         MissingFields.append(RF_Prism[i])
-                row[7] = (', '.join(map(str, MissingFields)))
+                row[7] = ", ".join(map(str, MissingFields))
                 cursor.updateRow(row)
                 MissingFields = []
-            del row, cursor  
-    arcpy.AddMessage('    MIS_FIELDS populated for treed records')
+            del row, cursor
+    arcpy.AddMessage("    MIS_FIELDS populated for treed records")
 
+    # TODO: save out dataframes
+    # overwrite input FC
     return FC_Prism
-    
-        
-def check_Required_Fields_Age(FC_Age):
 
+
+def check_Required_Fields_Age(FC_Age):
     arcpy.AddMessage("Begin check on Age points")
 
     # List of required fields
-    RF_Age = ['AGE_SP', 'AGE_DIA', 'AGE_HT', 'AGE_ORIG', 'AGE_GRW', 'AGE_CREW', 'AGE_DATE', 'HAS_MIS_FIELD', 'MIS_FIELD']
+    RF_Age = [
+        "AGE_SP",
+        "AGE_DIA",
+        "AGE_HT",
+        "AGE_ORIG",
+        "AGE_GRW",
+        "AGE_CREW",
+        "AGE_DATE",
+        "HAS_MIS_FIELD",
+        "MIS_FIELD",
+    ]
 
     # Add check fields to input feature classes
-    arcpy.AddField_management(in_table = FC_Age,
-                              field_name = "HAS_MIS_FIELD",
-                              field_type = "TEXT",
-                              field_length = 5)
-    arcpy.AddField_management(in_table = FC_Age,
-                              field_name = "MIS_FIELD",
-                              field_type = "TEXT",
-                              field_length = 80)
-    arcpy.AddMessage('    Fields added to {0}'.format(FC_Age))
+    arcpy.AddField_management(
+        in_table=FC_Age, field_name="HAS_MIS_FIELD", field_type="TEXT", field_length=5
+    )
+    arcpy.AddField_management(
+        in_table=FC_Age, field_name="MIS_FIELD", field_type="TEXT", field_length=80
+    )
+    arcpy.AddMessage("    Fields added to {0}".format(FC_Age))
 
     # Populate HAS_MIS_FIELD
-    with arcpy.da.UpdateCursor(FC_Age, RF_Age)as cursor:
+    with arcpy.da.UpdateCursor(FC_Age, RF_Age) as cursor:
         for row in cursor:
             if None in row[0:7]:
-                row[7] = 'Yes'
+                row[7] = "Yes"
             elif None not in row[0:7]:
-                row[7] = 'No'
+                row[7] = "No"
             cursor.updateRow(row)
         del row, cursor
-    arcpy.AddMessage('    HAS_MIS_FIELD populated')
-    
+    arcpy.AddMessage("    HAS_MIS_FIELD populated")
+
     # Populate MIS_FIELDS with missing field names for all other cases
-    arcpy.MakeQueryTable_management(in_table = FC_Age,
-                                    out_table = 'Q_Table',
-                                    in_key_field_option = "NO_KEY_FIELD",
-                                    where_clause = "HAS_MIS_FIELD = 'Yes'")
-    QueryRows = int(arcpy.GetCount_management('Q_Table').getOutput(0))
-    arcpy.Delete_management('Q_Table')
+    arcpy.MakeQueryTable_management(
+        in_table=FC_Age,
+        out_table="Q_Table",
+        in_key_field_option="NO_KEY_FIELD",
+        where_clause="HAS_MIS_FIELD = 'Yes'",
+    )
+    QueryRows = int(arcpy.GetCount_management("Q_Table").getOutput(0))
+    arcpy.Delete_management("Q_Table")
     if QueryRows != 0:
         with arcpy.da.UpdateCursor(FC_Age, RF_Age, "HAS_MIS_FIELD = 'Yes'") as cursor:
             for row in cursor:
@@ -339,88 +380,80 @@ def check_Required_Fields_Age(FC_Age):
                 for i in range(0, len(row[2:])):
                     if row[i] is None:
                         MissingFields.append(RF_Age[i])
-                row[8] = (', '.join(map(str, MissingFields)))
+                row[8] = ", ".join(map(str, MissingFields))
                 cursor.updateRow(row)
                 MissingFields = []
-            del row, cursor  
-    arcpy.AddMessage('    MIS_FIELDS populated')
+            del row, cursor
+    arcpy.AddMessage("    MIS_FIELDS populated")
+
+    # TODO: save out dataframes
+    # overwrite input FC
 
     return FC_Age
 
-    
 
-    
-    
 def check_Required_Fields_Fixed(FC_Fixed):
-
-    arcpy.AddMessage('Begin check on Fixed plots')
+    arcpy.AddMessage("Begin check on Fixed plots")
 
     # List of required fields
-    RF_Fixed = ['OV_CLSR', 'OV_HT', 'UND_HT', 'UND_COV', 'UND_SP1', 'GRD_SP1', 'FP_CREW', 'FP_DATE', 'HAS_MIS_FIELD', 'MIS_FIELD']
+    RF_Fixed = [
+        "OV_CLSR",
+        "OV_HT",
+        "UND_HT",
+        "UND_COV",
+        "UND_SP1",
+        "GRD_SP1",
+        "FP_CREW",
+        "FP_DATE",
+        "HAS_MIS_FIELD",
+        "MIS_FIELD",
+    ]
 
     # Add check fields to input feature classes
-    arcpy.AddField_management(in_table = FC_Fixed,
-                              field_name = "HAS_MIS_FIELD",
-                              field_type = "TEXT",
-                              field_length = 5)
-    arcpy.AddField_management(in_table = FC_Fixed,
-                              field_name = "MIS_FIELD",
-                              field_type = "TEXT",
-                              field_length = 80)
-    arcpy.AddMessage('    Fields added to {0}'.format(FC_Fixed))
+    arcpy.AddField_management(
+        in_table=FC_Fixed, field_name="HAS_MIS_FIELD", field_type="TEXT", field_length=5
+    )
+    arcpy.AddField_management(
+        in_table=FC_Fixed, field_name="MIS_FIELD", field_type="TEXT", field_length=80
+    )
+    arcpy.AddMessage("    Fields added to {0}".format(FC_Fixed))
 
     # Populate HAS_MIS_FIELD
     with arcpy.da.UpdateCursor(FC_Fixed, RF_Fixed) as cursor:
         for row in cursor:
             if None in row[0:8]:
-                row[8] = 'Yes'
+                row[8] = "Yes"
             elif None not in row[0:8]:
-                row[8] = 'No'
+                row[8] = "No"
             cursor.updateRow(row)
         del row, cursor
-    arcpy.AddMessage('    HAS_MIS_FIELD populated')
-    
+    arcpy.AddMessage("    HAS_MIS_FIELD populated")
+
     # Populate MIS_FIELDS with missing field names for all other cases
-    arcpy.MakeQueryTable_management(in_table = FC_Fixed,
-                                    out_table = 'Q_Table',
-                                    in_key_field_option = "NO_KEY_FIELD",
-                                    where_clause = "HAS_MIS_FIELD = 'Yes'")
-    QueryRows = int(arcpy.GetCount_management('Q_Table').getOutput(0))
-    arcpy.Delete_management('Q_Table')
+    arcpy.MakeQueryTable_management(
+        in_table=FC_Fixed,
+        out_table="Q_Table",
+        in_key_field_option="NO_KEY_FIELD",
+        where_clause="HAS_MIS_FIELD = 'Yes'",
+    )
+    QueryRows = int(arcpy.GetCount_management("Q_Table").getOutput(0))
+    arcpy.Delete_management("Q_Table")
     if QueryRows != 0:
-        with arcpy.da.UpdateCursor(FC_Fixed, RF_Fixed, "HAS_MIS_FIELD = 'Yes'") as cursor:
+        with arcpy.da.UpdateCursor(
+                FC_Fixed, RF_Fixed, "HAS_MIS_FIELD = 'Yes'"
+        ) as cursor:
             for row in cursor:
                 MissingFields = []
                 for i in range(0, len(row[2:])):
                     if row[i] is None:
                         MissingFields.append(RF_Fixed[i])
-                row[9] = (', '.join(map(str, MissingFields)))
+                row[9] = ", ".join(map(str, MissingFields))
                 cursor.updateRow(row)
                 MissingFields = []
-            del row, cursor  
-    arcpy.AddMessage('    MIS_FIELDS populated')
+            del row, cursor
+    arcpy.AddMessage("    MIS_FIELDS populated")
+
+    # TODO: save out dataframes
+    # overwrite input FC
 
     return FC_Fixed
-                                     
-
-
-
-    
-                       
-    
-
-    
-        
-                                
-    
-
-
-	
-	
-
-    
-            
-    
-    
-                  
-    

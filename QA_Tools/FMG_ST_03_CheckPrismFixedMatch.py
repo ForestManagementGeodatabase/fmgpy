@@ -11,10 +11,10 @@ FC_Fixed = arcpy.GetParameterAsText(2)
 Fixed_PlotID = arcpy.GetParameterAsText(3)
 
 # Check each fixed plot has a prism plot and each prism plot has a fixed plot
-FMG_QA_FunctionLibrary.check_Prism_Fixed(FC_Prism = FC_Prism,
-                                         Prism_PlotID = Prism_PlotID,
-                                         FC_Fixed = FC_Fixed,
-                                         Fixed_PlotID = Fixed_PlotID)
+FMG_QA_FunctionLibrary.check_Prism_Fixed(FC_Prism=FC_Prism,
+                                         Prism_PlotID=Prism_PlotID,
+                                         FC_Fixed=FC_Fixed,
+                                         Fixed_PlotID=Fixed_PlotID)
 
 
                                          

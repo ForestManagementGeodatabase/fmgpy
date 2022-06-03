@@ -17,9 +17,9 @@ tDate = datetime.date.today().strftime('%Y%m%d')
 # Create QA Geodatabase
 gdbName = 'FMG_FieldData_QA_{0}'.format(tDate)
 
-arcpy.CreateFileGDB_management(out_folder_path = destinationFolder,
-                               out_name = gdbName,
-                               out_version = 'CURRENT')
+arcpy.CreateFileGDB_management(out_folder_path=destinationFolder,
+                               out_name=gdbName,
+                               out_version='CURRENT')
 
 arcpy.AddMessage('Working GDB {0} created'.format(gdbName))
                  
@@ -29,10 +29,10 @@ FCs = [(inFixed, 'Fixed', 5), (inPrism, 'Prism', 6), (inAge, 'Age', 7), (inPlot,
 for fc in FCs:
     outName = '{0}_QA_{1}'.format(fc[1], tDate)
     outPath = os.path.join(destinationFolder, gdbName + '.gdb', outName)
-    arcpy.CopyFeatures_management(in_features = fc[0],
-                                  out_feature_class = outPath)
+    arcpy.CopyFeatures_management(in_features=fc[0],
+                                  out_feature_class=outPath)
     arcpy.AddMessage('{0} copied to {1}'.format(fc[1], outPath))
-    #outFC = arcpy.SetParameterAsText(fc[2], outPath)
+    # outFC = arcpy.SetParameterAsText(fc[2], outPath)
     
 
 
