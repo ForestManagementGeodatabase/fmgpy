@@ -11,6 +11,11 @@ from arcgis.features import GeoAccessor, GeoSeriesAccessor
 arcpy.env.overwriteOutput = True
 
 
+def check_plot_center(fc_center):
+    # check plot center fc has all needed fields
+    center_df = pd.DataFrame.spatial.from_featureclass(fc_center)
+
+
 def check_Plot_IDs(FC_Center, Center_PlotID_Field, FC_Check, Check_PlotID_Field):
     """Checks plot IDs on a given input FMG field dataset (Fixed, Prism, Age) based on a list
     of plot IDs generated from a master set of plot IDs, this master set of plot IDs can be the
@@ -64,7 +69,7 @@ def check_Plot_IDs(FC_Center, Center_PlotID_Field, FC_Check, Check_PlotID_Field)
     arcpy.AddMessage("VALID_PLOT_ID populated, check of {0} complete".format(os.path.basename(FC_Check)))
 
     # overwrite input FC
-    check_df.spatial.to_featureclass(FC_Check)
+    check_df.spatial.to_featureclass(FC_Check, overwrite=True, sanitize_columns=False)
     return FC_Check
 
 
@@ -111,7 +116,7 @@ def check_Fixed_Offset(FC_PlotLocations, PlotID_Field, FC_Fixed, Fixed_PlotID_Fi
     arcpy.AddMessage("Offsets calculated")
 
     # overwrite input FC
-    fixed_df.spatial.to_featureclass(FC_Fixed)
+    fixed_df.spatial.to_featureclass(FC_Fixed, sanitize_columns=False)
     return FC_Fixed
 
 
@@ -137,24 +142,20 @@ def check_Prism_Fixed(FC_Prism, Prism_PlotID, FC_Fixed, Fixed_PlotID):
     fixed_df = pd.DataFrame.spatial.from_featureclass(FC_Fixed)
 
     # flag prism plot IDs without corresponding fixed plot
-    prism_df["has_fixed"] = prism_df[Prism_PlotID].isin(fixed_df[Fixed_PlotID])
+    prism_df["HAS_FIXED"] = prism_df[Prism_PlotID].isin(fixed_df[Fixed_PlotID])
     arcpy.AddMessage(
         "Prism points {0} checked for corresponding fixed points".format(FC_Prism)
     )
-    # convert boolean value to text Yes/No
-    prism_df["has_fixed"].apply(lambda x: np.where(x, 'Yes', 'No'))
 
     # flag fixed plot IDs without corresponding prism plot
-    fixed_df["has_prism"] = fixed_df[Fixed_PlotID].isin(prism_df[Prism_PlotID])
+    fixed_df["HAS_PRISM"] = fixed_df[Fixed_PlotID].isin(prism_df[Prism_PlotID])
     arcpy.AddMessage(
         "Fixed points {0} checked for corresponding prism points".format(FC_Fixed)
     )
-    # convert boolean value to text Yes/No
-    fixed_df["has_prism"].apply(lambda x: np.where(x, 'Yes', 'No'))
 
     # overwrite input FC
-    prism_df.spatial.to_featureclass(FC_Prism)
-    fixed_df.spatial.to_featureclass(FC_Fixed)
+    prism_df.spatial.to_featureclass(FC_Prism, sanitize_columns=False)
+    fixed_df.spatial.to_featureclass(FC_Fixed, sanitize_columns=False)
     return [FC_Prism, FC_Fixed]
 
 
@@ -193,7 +194,7 @@ def check_Contractor_Age_Plots(FC_Plots, Plots_PlotID, Age_FlagField, FC_Age, Ag
     return FC_Plots
 
 
-def check_Required_Fields_Prism(FC_Prism):
+def check_required_fields_prism(fc_prism):
     arcpy.AddMessage("Begin check on Prism points")
 
     # List of required fields
@@ -207,6 +208,9 @@ def check_Required_Fields_Prism(FC_Prism):
         "HAS_MIS_FIELD",
         "MIS_FIELD",
     ]
+
+    # null values allowed only when TR_SP is null (no tree) or "NoTree"
+    # check TR_SP against list of accepted values
 
     # Add check fields to input feature classes
     arcpy.AddField_management(

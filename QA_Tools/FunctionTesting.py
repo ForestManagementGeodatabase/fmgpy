@@ -3,24 +3,24 @@ import os, sys, datetime
 import FMG_QA_FunctionLibrary
 
 # Define some input datasets
-inPlot = r"C:\GitHub_Repos\FMG\fmgpy\tests\data\Pool_17_20210930\QA_Output.gdb\Plot_WGS84"
+inCenter = r"C:\GitHub_Repos\FMG\fmgpy\tests\data\Pool_17_20210930\QA_Output.gdb\Plot_WGS84"
 inFixed = r"C:\GitHub_Repos\FMG\fmgpy\tests\data\Pool_17_20210930\QA_Output.gdb\Fixed"
 inPrism = r"C:\GitHub_Repos\FMG\fmgpy\tests\data\Pool_17_20210930\QA_Output.gdb\Prism"
 inAge = r"C:\GitHub_Repos\FMG\fmgpy\tests\data\Pool_17_20210930\QA_Output.gdb\Age"
 
 # Check fixed plot IDs against Plot locations
 
-FMG_QA_FunctionLibrary.check_Plot_IDs(inPlot, 'PLOT', inFixed, 'plot')
-print('checked {0}'.format(os.path.basename(inFixed)))
-
-# FMG_QA_FunctionLibrary.check_Plot_IDs(inPlot, 'PLOT', inPrism, 'PLOT')
+# FMG_QA_FunctionLibrary.check_Plot_IDs(inCenter, 'PLOT', inFixed, 'PLOT')
+# print('checked {0}'.format(os.path.basename(inFixed)))
+#
+# FMG_QA_FunctionLibrary.check_Plot_IDs(inCenter, 'PLOT', inPrism, 'PLOT')
 # print('checked {0}'.format(os.path.basename(inPrism)))
 #
-# FMG_QA_FunctionLibrary.check_Plot_IDs(inPlot, 'PLOT', inAge, 'PLOT')
+# FMG_QA_FunctionLibrary.check_Plot_IDs(inCenter, 'PLOT', inAge, 'PLOT')
 # print('checked {0}'.format(os.path.basename(inAge)))
 
 # Check that prism plots have fixed plots and that fixed plots have prism plots
-FMG_QA_FunctionLibrary.check_Prism_Fixed(inPrism, 'plot', inFixed, 'plot')
+FMG_QA_FunctionLibrary.check_Prism_Fixed(inPrism, 'PLOT', inFixed, 'PLOT')
 # Ran quickly and correctly
 
 

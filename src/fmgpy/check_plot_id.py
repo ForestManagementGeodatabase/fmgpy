@@ -4,7 +4,6 @@
 import arcpy
 import os
 import sys
-import numpy as np
 import pandas as pd
 
 from arcgis.features import GeoAccessor, GeoSeriesAccessor
@@ -26,16 +25,18 @@ def check_plot_ids(fc_center, center_plot_id_field, fc_check, check_plot_id_fiel
     check_plot_id_field     --  The field name containing Plot IDs
     """
 
+    # check inputs
+
     arcpy.AddMessage(
         "Checking Plot ID fields for {0}".format(fc_center)
     )
 
     # create dataframes
-    main_df = pd.DataFrame.spatial.from_featureclass(fc_center)
+    center_df = pd.DataFrame.spatial.from_featureclass(fc_center)
     check_df = pd.DataFrame.spatial.from_featureclass(fc_check)
 
     # check main plot ID field to ensure it is integer
-    if main_df[center_plot_id_field].dtype == 'int64':
+    if center_df[center_plot_id_field].dtype == 'int64':
         arcpy.AddMessage("{0} plot ID field type is correct".format(os.path.basename(fc_center)
                                                                     ))
     else:
@@ -55,13 +56,12 @@ def check_plot_ids(fc_center, center_plot_id_field, fc_check, check_plot_id_fiel
         sys.exit(0)
 
     # flag plot IDs not in main fc (returns boolean)
-    check_df["valid_plot_id"] = check_df[check_plot_id_field].isin(main_df[center_plot_id_field])
-
-    # convert boolean value to text Yes/No
-    check_df["valid_plot_id"].apply(lambda x: np.where(x, 'Yes', 'No'))
+    check_df["VALID_PLOT_ID"] = check_df[check_plot_id_field].isin(center_df[center_plot_id_field])
 
     arcpy.AddMessage("VALID_PLOT_ID populated, check of {0} complete".format(os.path.basename(fc_check)))
 
     # overwrite input FC
-    check_df.spatial.to_featureclass(fc_check)
+    check_df.spatial.to_featureclass(fc_check,
+                                     overwrite=True,
+                                     sanitize_columns=False)
     return fc_check
