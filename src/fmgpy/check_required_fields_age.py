@@ -54,6 +54,9 @@ def check_required_fields_age(fc_age):
         age_df.loc[age_df[i] == ' ', i] = None
         age_df.loc[age_df[i] == '', i] = None
 
+    # replace 0 in AGE_ORIG field with None
+    age_df.loc[age_df['AGE_ORIG'] == 0, 'AGE_ORIG'] = None
+
     # populate MIS_FIELDS with list of fields missing values
     age_df['MIS_FIELDS'] = age_df[["AGE_SP",
                                    "AGE_DIA",
@@ -71,6 +74,13 @@ def check_required_fields_age(fc_age):
     age_df.loc[age_df['MIS_FIELDS'] == '', 'HAS_MIS_FIELD'] = "No"
 
     arcpy.AddMessage("    HAS_MIS_FIELDS populated")
+
+    # check for valid years, must have full 4 digits
+    age_df.loc[age_df['AGE_ORIG'] > 1499, 'VALID_AGE'] = "Yes"
+    age_df.loc[age_df['AGE_ORIG'] <= 1499, 'VALID_AGE'] = "No"
+    age_df.loc[age_df['AGE_ORIG'].isnull(), 'VALID_AGE'] = "No"
+
+    arcpy.AddMessage("    VALID_AGE populated")
 
     # overwrite input FC
     age_df.spatial.to_featureclass(fc_age,

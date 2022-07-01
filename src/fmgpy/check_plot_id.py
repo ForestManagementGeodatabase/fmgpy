@@ -5,6 +5,7 @@ import arcpy
 import os
 import sys
 import pandas as pd
+from bool_to_text import yes_no
 
 from arcgis.features import GeoAccessor, GeoSeriesAccessor
 
@@ -57,6 +58,9 @@ def check_plot_ids(fc_center, center_plot_id_field, fc_check, check_plot_id_fiel
 
     # flag plot IDs not in main fc (returns boolean)
     check_df["VALID_PLOT_ID"] = check_df[check_plot_id_field].isin(center_df[center_plot_id_field])
+    yes_no(check_df, 'VALID_PLOT_ID')
+    # check_df.loc[check_df['VALID_PLOT_ID'] == 1, 'VALID_PLOT_ID'] = "Yes"
+    # check_df.loc[check_df['VALID_PLOT_ID'] == 0, 'VALID_PLOT_ID'] = "No"
 
     arcpy.AddMessage("VALID_PLOT_ID populated, check of {0} complete".format(os.path.basename(fc_check)))
 
