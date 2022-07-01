@@ -12,9 +12,15 @@ arcpy.env.overwriteOutput = True
 
 
 def check_required_fields_age(fc_age):
+    """Checks age plots for presence of required fields and for missing values in those fields.
+
+    Keyword Arguments:
+    fc_age    -- Path to age feature class
+    """
+
     arcpy.AddMessage("Begin check on Age points")
 
-    # List of required fields
+    # list of required fields
     rf_age = [
         "AGE_SP",
         "AGE_DIA",
@@ -38,15 +44,15 @@ def check_required_fields_age(fc_age):
 
     # if missing fields found, list and quit
     if len(missing_fields) > 0:
-        arcpy.AddError('''Field(s) {} missing from Fixed points. Names must be an exact match, please check your field 
+        arcpy.AddError('''Field(s) {} missing from Age points. Names must be an exact match, please check your field 
                        names and retry.'''
                        .format(missing_fields))
         sys.exit(0)
 
     # replace blank strings with NaN
     for i in rf_age:
-        age_df.loc[age_df[i] == ' ', i] = np.nan
-        age_df.loc[age_df[i] == '', i] = np.nan
+        age_df.loc[age_df[i] == ' ', i] = None
+        age_df.loc[age_df[i] == '', i] = None
 
     # populate MIS_FIELDS with list of fields missing values
     age_df['MIS_FIELDS'] = age_df[["AGE_SP",
@@ -56,11 +62,11 @@ def check_required_fields_age(fc_age):
                                    "AGE_GRW",
                                    "AGE_CREW",
                                    "AGE_DATE"]].apply(
-        lambda x: ','.join(x[x.isnull()].index), axis=1)
+        lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
     arcpy.AddMessage("    MIS_FIELDS populated")
 
-    # Populate HAS_MIS_FIELD
+    # populate HAS_MIS_FIELD
     age_df.loc[age_df['MIS_FIELDS'] != '', 'HAS_MIS_FIELD'] = "Yes"
     age_df.loc[age_df['MIS_FIELDS'] == '', 'HAS_MIS_FIELD'] = "No"
 

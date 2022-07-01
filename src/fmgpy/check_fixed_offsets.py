@@ -17,10 +17,10 @@ def check_fixed_offset(fc_center, center_plot_id_field, fc_fixed, fixed_plot_id_
     classes must have a coordinate system in meters.
 
     Keyword Arguments:
-    FC_PlotLocations    --  The path to the feature class containing the target plot locations
-    PlotID_Field        --  The field name containing Plot IDs of the target plot locations
-    FC_Fixed            --  The path to the feature class containing fixed plot locations
-    Fixed_PlotID_Field  --  The field name containing Plot IDs of the fixed plot locations
+    fc_center               --  The path to the feature class containing the target plot locations
+    center_plot_id_field    --  The field name containing Plot IDs of the target plot locations
+    fc_fixed                --  The path to the feature class containing fixed plot locations
+    fixed_plot_id_field     --  The field name containing Plot IDs of the fixed plot locations
     """
     arcpy.AddMessage(
         "Calculating horizontal offset between fixed plots and plot centers"

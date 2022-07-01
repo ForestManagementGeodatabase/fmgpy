@@ -12,9 +12,15 @@ arcpy.env.overwriteOutput = True
 
 
 def check_required_fields_fixed(fc_fixed):
+    """Checks fixed plots for presence of required fields and for missing values in those fields.
+
+    Keyword Arguments:
+    fc_fixed    -- Path to fixed feature class
+    """
+
     arcpy.AddMessage("Begin check on Fixed plots")
 
-    # List of required fields
+    # list of required fields
     rf_fixed = [
         "OV_CLSR",
         "OV_HT",
@@ -46,8 +52,8 @@ def check_required_fields_fixed(fc_fixed):
 
     # replace blank strings with NaN
     for i in rf_fixed:
-        fixed_df.loc[fixed_df[i] == ' ', i] = np.nan
-        fixed_df.loc[fixed_df[i] == '', i] = np.nan
+        fixed_df.loc[fixed_df[i] == ' ', i] = None
+        fixed_df.loc[fixed_df[i] == '', i] = None
 
     # populate MIS_FIELDS with list of fields missing values
     fixed_df['MIS_FIELDS'] = fixed_df[["OV_CLSR",
@@ -58,11 +64,11 @@ def check_required_fields_fixed(fc_fixed):
                                        "GRD_SP1",
                                        "FP_CREW",
                                        "FP_DATE"]].apply(
-        lambda x: ','.join(x[x.isnull()].index), axis=1)
+        lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
     arcpy.AddMessage("    MIS_FIELDS populated")
 
-    # Populate HAS_MIS_FIELD
+    # populate HAS_MIS_FIELD
     fixed_df.loc[fixed_df['MIS_FIELDS'] != '', 'HAS_MIS_FIELD'] = "Yes"
     fixed_df.loc[fixed_df['MIS_FIELDS'] == '', 'HAS_MIS_FIELD'] = "No"
 

@@ -12,9 +12,15 @@ arcpy.env.overwriteOutput = True
 
 
 def check_required_fields_prism(fc_prism):
+    """Checks prism plots for presence of required fields and for missing values in those fields.
+
+    Keyword Arguments:
+    fc_prism    -- Path to prism feature class
+    """
+
     arcpy.AddMessage("Begin check on Prism points")
 
-    # List of required fields
+    # list of required fields
     rf_prism = [
         "TR_SP",
         "TR_DIA",
@@ -47,14 +53,14 @@ def check_required_fields_prism(fc_prism):
 
     # replace blank strings with NaN
     for i in rf_prism:
-        prism_df.loc[prism_df[i] == ' ', i] = np.nan
-        prism_df.loc[prism_df[i] == '', i] = np.nan
+        prism_df.loc[prism_df[i] == ' ', i] = None
+        prism_df.loc[prism_df[i] == '', i] = None
 
     # populate MIS_FIELDS with list of fields missing values
     # if TR_SP is 'NONE' or 'NoTree', check that TR_CREW and TR_DATE fields are filled out
     prism_df.loc[prism_df.TR_SP.isin(["NONE", "NoTree"]), 'MIS_FIELDS'] = prism_df[["TR_CREW",
                                                                                     "TR_DATE"]].apply(
-        lambda x: ','.join(x[x.isnull()].index), axis=1)
+        lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
     arcpy.AddMessage("    MIS_FIELDS populated for no tree records")
 
@@ -65,7 +71,7 @@ def check_required_fields_prism(fc_prism):
                                                                                      "TR_HLTH",
                                                                                      "TR_CREW",
                                                                                      "TR_DATE"]].apply(
-        lambda x: ','.join(x[x.isnull()].index), axis=1)
+        lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
     prism_df.loc[prism_df['TR_SP'].isna(), 'MIS_FIELDS'] = prism_df[["TR_SP",
                                                                      "TR_DIA",
@@ -73,11 +79,11 @@ def check_required_fields_prism(fc_prism):
                                                                      "TR_HLTH",
                                                                      "TR_CREW",
                                                                      "TR_DATE"]].apply(
-        lambda x: ','.join(x[x.isnull()].index), axis=1)
+        lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
     arcpy.AddMessage("    MIS_FIELDS populated for treed records")
 
-    # Populate HAS_MIS_FIELD
+    # populate HAS_MIS_FIELD
     prism_df.loc[prism_df['MIS_FIELDS'] != '', 'HAS_MIS_FIELD'] = "Yes"
     prism_df.loc[prism_df['MIS_FIELDS'] == '', 'HAS_MIS_FIELD'] = "No"
 

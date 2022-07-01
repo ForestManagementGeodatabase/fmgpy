@@ -16,10 +16,10 @@ def check_prism_fixed(fc_prism, prism_plot_id, fc_fixed, fixed_plot_id):
     holds true
 
     Keyword Arguments:
-    FC_Prism      -- Path to prism feature class
-    Prism_PlotID  -- Prism feature class plot ID field
-    FC_Fixed      -- Path to fixed plot feature class
-    Fixed_PlotID  -- Fixed feature class plot ID field
+    fc_prism        -- Path to prism feature class
+    prism_plot_id   -- Prism feature class plot ID field
+    fc_fixed        -- Path to fixed plot feature class
+    fixed_plot_id   -- Fixed feature class plot ID field
     """
 
     arcpy.AddMessage(
