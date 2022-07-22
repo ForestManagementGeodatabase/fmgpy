@@ -29,39 +29,40 @@ inAge = r"C:\GitHub_Repos\FMG\fmgpy\tests\data\Pool_17_20210930\QA_Output.gdb\Ag
 # print('checked {0}'.format(os.path.basename(inAge)))
 
 # Check that prism plots have fixed plots and that fixed plots have prism plots
-check_prism_fixed(inPrism, 'PLOT', inFixed, 'PLOT')
+# check_prism_fixed(inPrism, 'PLOT', inFixed, 'PLOT')
 # Ran quickly and correctly
 
 
 # Check that age plots have been collected as prescribed
-# check_contractor_age_plots(FC_Plots=inPlot,
-#                            Plots_PlotID='PLOT',
-#                            Age_FlagField='Age',
-#                            FC_Age=inAge,
-#                            Age_PlotID='PLOT')
+
+# check_contractor_age_plots(fc_center=inCenter,
+#                            center_plot_id_field='PLOT',
+#                            age_flag_field='Type',
+#                            fc_age=inAge,
+#                            age_plot_id='PLOT')
 # Ran quickly and correctly, need to watch for the AGE field definition query
 # without this being standardized the tool will be more error-prone
 
 
 # Check that fixed plots are within 3 meters of plot center
-# check_fixed_offset(FC_PlotLocations=inPlot,
-#                    PlotID_Field='PLOT',
-#                    FC_Fixed=inFixed,
-#                    Fixed_PlotID_Field='plot')
+check_fixed_offset(fc_center=inCenter,
+                   center_plot_id_field='PLOT',
+                   fc_fixed=inFixed,
+                   fixed_plot_id_field='PLOT')
 # Ran quickly and correctly - need to pay attention to magnitude of offset:
 # large offsets can indicate that the fixed plot has the wrong plot ID
 
 
 # Check Missing fields for Prism Points
-# check_required_fields_prism(inPrism)
+check_required_fields_prism(inPrism)
 # Ran quickly and correctly
 
 
 # Check missing fields for Age points
-# check_required_fields_age(inAge)
+check_required_fields_age(inAge)
 # Ran quickly and correctly
 
 
 # Check missing fields for Fixed points
-# check_required_fields_fixed(inFixed)
+check_required_fields_fixed(inFixed)
 # Ran Quickly and correctly

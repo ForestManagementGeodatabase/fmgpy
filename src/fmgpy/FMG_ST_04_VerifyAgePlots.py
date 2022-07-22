@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 import arcpy
-from check_contractor_age_plots import check_contractor_age_plots
+from FMG_QA_FunctionLibrary import check_contractor_age_plots
 import os
 
 # Get Parameter arguments for script tool

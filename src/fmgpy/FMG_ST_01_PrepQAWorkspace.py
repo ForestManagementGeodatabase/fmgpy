@@ -15,23 +15,23 @@ inPlot = arcpy.GetParameterAsText(4)
 tDate = datetime.date.today().strftime('%Y%m%d')
 
 # Create QA Geodatabase
-gdbName = 'FMG_FieldData_QA_{0}'.format(tDate)
+gdbName = f'FMG_FieldData_QA_{tDate}'
 
 arcpy.CreateFileGDB_management(out_folder_path=destinationFolder,
                                out_name=gdbName,
                                out_version='CURRENT')
 
-arcpy.AddMessage('Working GDB {0} created'.format(gdbName))
+arcpy.AddMessage(f'Working GDB {gdbName} created')
                  
 # Loop through input datasets, copying out features
 FCs = [(inFixed, 'Fixed', 5), (inPrism, 'Prism', 6), (inAge, 'Age', 7), (inPlot, 'Plot', 8)]
                  
 for fc in FCs:
-    outName = '{0}_QA_{1}'.format(fc[1], tDate)
+    outName = f'{fc[1]}_QA_{tDate}'
     outPath = os.path.join(destinationFolder, gdbName + '.gdb', outName)
     arcpy.CopyFeatures_management(in_features=fc[0],
                                   out_feature_class=outPath)
-    arcpy.AddMessage('{0} copied to {1}'.format(fc[1], outPath))
+    arcpy.AddMessage(f'{fc[1]} copied to {outPath}')
     # outFC = arcpy.SetParameterAsText(fc[2], outPath)
     
 

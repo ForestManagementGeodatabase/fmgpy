@@ -73,12 +73,12 @@ def check_required_fields_prism(fc_prism):
                                                                                      "TR_DATE"]].apply(
         lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
-    prism_df.loc[prism_df['TR_SP'].isna(), 'MIS_FIELDS'] = prism_df[["TR_SP",
-                                                                     "TR_DIA",
-                                                                     "TR_CL",
-                                                                     "TR_HLTH",
-                                                                     "TR_CREW",
-                                                                     "TR_DATE"]].apply(
+    prism_df.loc[prism_df['TR_SP'].isnull(), 'MIS_FIELDS'] = prism_df[["TR_SP",
+                                                                       "TR_DIA",
+                                                                       "TR_CL",
+                                                                       "TR_HLTH",
+                                                                       "TR_CREW",
+                                                                       "TR_DATE"]].apply(
         lambda x: ', '.join(x[x.isnull()].index), axis=1)
 
     arcpy.AddMessage("    MIS_FIELDS populated for treed records")

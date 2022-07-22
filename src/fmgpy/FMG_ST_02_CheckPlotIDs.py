@@ -1,8 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 import arcpy
-from check_plot_id import check_plot_ids
-import os
+from FMG_QA_FunctionLibrary import check_plot_ids
 
 # Get Parameter arguments for script tool
 fc_center = arcpy.GetParameterAsText(0)

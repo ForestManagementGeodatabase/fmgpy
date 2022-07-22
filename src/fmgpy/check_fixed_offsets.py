@@ -32,10 +32,11 @@ def check_fixed_offset(fc_center, center_plot_id_field, fc_fixed, fixed_plot_id_
 
     # calculate horizontal offset between fixed points and main plot center
     # join plot center SHAPE field to fixed on plot ID
-    fixed_coords = fixed_df.join(center_df[[center_plot_id_field, 'SHAPE']].set_index(center_plot_id_field),
-                                 on=fixed_plot_id_field,
-                                 lsuffix='_fixed',
-                                 rsuffix='_plot')
+    fixed_coords = fixed_df.loc[fixed_df['VALID_PLOT_ID'] == 'Yes'].join(center_df[[center_plot_id_field, 'SHAPE']]
+                                                                         .set_index(center_plot_id_field),
+                                                                         on=fixed_plot_id_field,
+                                                                         lsuffix='_fixed',
+                                                                         rsuffix='_plot')
 
     fixed_coords['FIXED_X'] = fixed_coords['SHAPE_fixed'].apply(lambda x: x.get('x'))
     fixed_coords['FIXED_Y'] = fixed_coords['SHAPE_fixed'].apply(lambda x: x.get('y'))
